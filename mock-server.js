@@ -9,7 +9,7 @@ const cors = require('cors');
 const app = express();
 
 // Configuration
-const DEFAULT_API_ENDPOINT = 'https://um-sinmam-api.iroak.cl/';
+const DEFAULT_API_ENDPOINT = 'http://um-sinmam-api.iroak.cl/';
 
 app.use(cors());
 app.use(express.json());
