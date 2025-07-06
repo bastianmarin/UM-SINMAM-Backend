@@ -8,7 +8,8 @@
     "dev": "nodemon server.js",
     "mock": "node mock-server.js",
     "setup": "node setup.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node test-api.js",
+    "test-post": "node test-post.js"
   },
   "keywords": [
     "heart-rate",

@@ -18,8 +18,23 @@ API backend para el sistema de monitoreo de ritmo cardíaco SINMAM.
 
 2. **Instalar dependencias**
    ```bash
-   npm install
-   ```
+**Para obtener estadísticas:**
+
+```javascript
+const fetchHeartRateStats = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/heart-rate/stats`);
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Error fetching heart rate stats:', error);
+    throw error;
+  }
+};
+
+// Obtener estadísticas cada 15 segundos
+setInterval(fetchHeartRateStats, 15000);
+``` ```
 
 3. **Configurar variables de entorno**
    ```bash
@@ -39,6 +54,50 @@ El servidor estará disponible en `http://localhost:3001`
 
 ## 📋 Endpoints de la API
 
+### Envío de Datos de Ritmo Cardíaco
+**POST** `/api/heart-rate/reading`
+
+Recibe una nueva lectura de ritmo cardíaco y la procesa automáticamente.
+
+**Cuerpo de la petición:**
+```json
+{
+  "pulse": 85
+}
+```
+
+**Respuesta exitosa (201):**
+```json
+{
+  "success": true,
+  "message": "Heart rate reading processed successfully",
+  "reading": {
+    "id": 1,
+    "hour": "14:30",
+    "pulse": 85,
+    "isRisky": false,
+    "timestamp": "2025-07-06T14:30:00Z"
+  },
+  "stats": {
+    "last5Minutes": 85,
+    "last15Minutes": 85,
+    "last30Minutes": 85,
+    "current": 85,
+    "lastUpdated": "14:30:25",
+    "totalReadings": 1,
+    "hasData": true
+  }
+}
+```
+
+**Respuesta de error (400):**
+```json
+{
+  "error": "Invalid heart rate data",
+  "message": "Heart rate must be a number between 30 and 250"
+}
+```
+
 ### Estadísticas de Ritmo Cardíaco
 **GET** `/api/heart-rate/stats`
 
@@ -51,7 +110,36 @@ Retorna estadísticas de ritmo cardíaco incluyendo promedios para diferentes pe
   "last15Minutes": 92,
   "last30Minutes": 88,
   "current": 98,
-  "lastUpdated": "14:30:25"
+  "lastUpdated": "14:30:25",
+  "totalReadings": 25,
+  "hasData": true
+}
+```
+
+**Nota:** Los valores pueden ser `null` si no hay datos suficientes para el período solicitado.
+
+### Estadísticas Detalladas
+**GET** `/api/heart-rate/statistics`
+
+Retorna estadísticas detalladas incluyendo conteos de lecturas normales y riesgosas.
+
+**Respuesta:**
+```json
+{
+  "last5Minutes": 95,
+  "last15Minutes": 92,
+  "last30Minutes": 88,
+  "current": 98,
+  "lastUpdated": "14:30:25",
+  "totalReadings": 25,
+  "hasData": true,
+  "readingCount": {
+    "total": 25,
+    "risky": 8,
+    "normal": 17,
+    "riskyPercentage": 32
+  },
+  "dataAvailable": true
 }
 ```
 
@@ -143,7 +231,7 @@ UM-SINMAM-Backend/
 | `NORMAL_HR_MIN` | Ritmo cardíaco mínimo normal | 60 |
 | `NORMAL_HR_MAX` | Ritmo cardíaco máximo normal | 100 |
 | `RISKY_HR_THRESHOLD` | Umbral de riesgo | 100 |
-| `DATA_UPDATE_INTERVAL` | Intervalo de actualización (segundos) | 15 |
+| `PRODUCTION_API_ENDPOINT` | Endpoint de producción | https://um-sinmam-api.iroak.cl/ |
 
 ### Lógica de Clasificación de Riesgo
 
@@ -161,6 +249,8 @@ El campo `isRisky` se establece en `true` cuando:
 
 - `npm start` - Ejecutar en producción
 - `npm run dev` - Ejecutar en desarrollo con recarga automática
+- `npm run mock` - Ejecutar servidor mock para pruebas
+- `npm run setup` - Configurar el proyecto inicial
 
 ### Logging
 
@@ -172,16 +262,28 @@ La aplicación incluye un sistema de logging con diferentes niveles:
 
 ### Generación de Datos
 
-El sistema genera automáticamente datos de ritmo cardíaco cada 15 segundos (configurable). Los datos incluyen:
-- Lecturas normales (60-100 BPM)
-- Lecturas de riesgo con probabilidad configurable
-- Tendencias realistas basadas en patrones de ritmo cardíaco
+**⚠️ IMPORTANTE:** La API ya NO genera datos automáticamente. 
+
+**Modo de operación actual:**
+- ✅ Recibe datos reales vía POST `/api/heart-rate/reading`
+- ✅ Procesa y almacena las lecturas en memoria
+- ✅ Calcula estadísticas en tiempo real
+- ✅ Clasifica automáticamente el riesgo
+- ❌ No genera datos falsos automáticamente
+
+**Para enviar datos:**
+```bash
+curl -X POST http://localhost:3001/api/heart-rate/reading \
+  -H "Content-Type: application/json" \
+  -d '{"pulse": 85}'
+```
 
 ## 📊 Características
 
 ### Funcionalidades Principales
 
-- ✅ Generación automática de datos de ritmo cardíaco
+- ✅ Recepción de datos reales vía POST
+- ✅ Procesamiento automático de lecturas
 - ✅ Cálculo de promedios por períodos de tiempo
 - ✅ Clasificación automática de riesgo
 - ✅ API REST completa
@@ -190,6 +292,8 @@ El sistema genera automáticamente datos de ritmo cardíaco cada 15 segundos (co
 - ✅ Configuración flexible
 - ✅ Manejo de errores
 - ✅ CORS habilitado
+- ✅ Estadísticas detalladas
+- ❌ Generación automática de datos (removida)
 
 ### Seguridad
 
@@ -208,9 +312,40 @@ Para conectar con el frontend, configure la variable `VITE_API_BASE_URL`:
 VITE_API_BASE_URL=http://localhost:3001
 ```
 
-### Actualización Automática
+### Actualización de Datos
 
-La aplicación cliente debe solicitar datos cada 15 segundos para mantener la sincronización:
+**Para enviar datos desde tu aplicación:**
+
+```javascript
+// Ejemplo de envío de datos
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://um-sinmam-api.iroak.cl';
+
+const sendHeartRateReading = async (pulse) => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/heart-rate/reading`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ pulse })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    console.log('Heart rate reading sent successfully:', data);
+    return data;
+  } catch (error) {
+    console.error('Error sending heart rate reading:', error);
+    throw error;
+  }
+};
+
+// Enviar una lectura
+sendHeartRateReading(85);
+```
 
 ```javascript
 // Ejemplo de integración

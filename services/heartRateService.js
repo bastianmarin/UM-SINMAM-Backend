@@ -1,4 +1,4 @@
-const { generateHeartRateReading, isRiskyHeartRate } = require('../utils/heartRateUtils');
+const { isRiskyHeartRate } = require('../utils/heartRateUtils');
 const { logInfo, logError } = require('../utils/logger');
 
 // In-memory storage for heart rate readings
@@ -8,7 +8,7 @@ let currentId = 1;
 /**
  * Calculate average heart rate for a given time period
  * @param {number} minutes - Time period in minutes
- * @returns {number} Average heart rate
+ * @returns {number} Average heart rate or null if no data
  */
 function calculateAverage(minutes) {
   const cutoffTime = new Date(Date.now() - minutes * 60 * 1000);
@@ -17,7 +17,7 @@ function calculateAverage(minutes) {
   );
   
   if (relevantReadings.length === 0) {
-    return generateHeartRateReading(); // Return a random reading if no data
+    return null; // No data available
   }
   
   const sum = relevantReadings.reduce((acc, reading) => acc + reading.pulse, 0);
@@ -26,11 +26,11 @@ function calculateAverage(minutes) {
 
 /**
  * Get current heart rate (latest reading)
- * @returns {number} Current heart rate
+ * @returns {number|null} Current heart rate or null if no data
  */
 function getCurrentHeartRate() {
   if (heartRateReadings.length === 0) {
-    return generateHeartRateReading();
+    return null;
   }
   return heartRateReadings[heartRateReadings.length - 1].pulse;
 }
@@ -46,11 +46,14 @@ async function getHeartRateStats() {
       last15Minutes: calculateAverage(15),
       last30Minutes: calculateAverage(30),
       current: getCurrentHeartRate(),
-      lastUpdated: new Date().toLocaleTimeString('es-ES', { 
-        hour: '2-digit', 
-        minute: '2-digit', 
-        second: '2-digit' 
-      })
+      lastUpdated: heartRateReadings.length > 0 ? 
+        new Date(heartRateReadings[heartRateReadings.length - 1].timestamp).toLocaleTimeString('es-ES', { 
+          hour: '2-digit', 
+          minute: '2-digit', 
+          second: '2-digit' 
+        }) : null,
+      totalReadings: heartRateReadings.length,
+      hasData: heartRateReadings.length > 0
     };
     
     return stats;
@@ -116,25 +119,8 @@ function addHeartRateReading(pulse) {
     heartRateReadings = heartRateReadings.slice(-maxReadings);
   }
   
+  logInfo(`New heart rate reading added: ${pulse} BPM (${reading.isRisky ? 'RISKY' : 'NORMAL'})`);
   return reading;
-}
-
-/**
- * Generate and add a new random heart rate reading
- * @returns {Object} The created reading
- */
-function generateNewReading() {
-  const pulse = generateHeartRateReading();
-  return addHeartRateReading(pulse);
-}
-
-/**
- * Clear all heart rate readings (for testing purposes)
- */
-function clearReadings() {
-  heartRateReadings = [];
-  currentId = 1;
-  logInfo('Heart rate readings cleared');
 }
 
 /**
@@ -145,11 +131,28 @@ function getReadingsCount() {
   return heartRateReadings.length;
 }
 
+/**
+ * Get statistics about readings
+ * @returns {Object} Reading statistics
+ */
+function getReadingStats() {
+  const total = heartRateReadings.length;
+  const risky = heartRateReadings.filter(reading => reading.isRisky).length;
+  const normal = total - risky;
+  
+  return {
+    total,
+    risky,
+    normal,
+    riskyPercentage: total > 0 ? Math.round((risky / total) * 100) : 0
+  };
+}
+
 module.exports = {
   getHeartRateStats,
   getHeartRateReadings,
   addHeartRateReading,
-  generateNewReading,
   clearReadings,
-  getReadingsCount
+  getReadingsCount,
+  getReadingStats
 };

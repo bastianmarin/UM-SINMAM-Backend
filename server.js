@@ -5,7 +5,7 @@ const morgan = require('morgan');
 require('dotenv').config();
 
 const heartRateRoutes = require('./routes/heartRate');
-const { initializeDataGeneration } = require('./services/dataService');
+const { initializeDataService } = require('./services/dataService');
 const { logInfo, logError } = require('./utils/logger');
 
 const app = express();
@@ -50,14 +50,15 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Initialize data generation service
-initializeDataGeneration();
+// Initialize data service
+initializeDataService();
 
 // Start server
 app.listen(PORT, () => {
   logInfo(`🚀 SINMAM API server is running on port ${PORT}`);
   logInfo(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   logInfo(`🌐 API Base URL: http://localhost:${PORT}`);
+  logInfo(`📥 Ready to receive heart rate data via POST /api/heart-rate/reading`);
 });
 
 module.exports = app;

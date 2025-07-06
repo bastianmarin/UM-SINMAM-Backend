@@ -1,97 +1,34 @@
-const { generateNewReading } = require('./heartRateService');
 const { logInfo, logError } = require('../utils/logger');
 
-let dataGenerationInterval;
-
 /**
- * Initialize automatic data generation
+ * Data service for SINMAM API
+ * This service manages the data processing workflow
+ * Note: Data generation has been removed - the API now receives real data via POST
  */
-function initializeDataGeneration() {
-  const updateInterval = (parseInt(process.env.DATA_UPDATE_INTERVAL) || 15) * 1000;
-  
-  logInfo(`🔄 Starting automatic data generation every ${updateInterval / 1000} seconds`);
-  
-  // Generate initial readings
-  generateInitialReadings();
-  
-  // Set up interval for continuous data generation
-  dataGenerationInterval = setInterval(() => {
-    try {
-      const reading = generateNewReading();
-      logInfo(`📊 Generated new reading: ${reading.pulse} BPM at ${reading.hour}`);
-    } catch (error) {
-      logError(`Error generating new reading: ${error.message}`);
-    }
-  }, updateInterval);
-}
 
 /**
- * Generate initial set of readings to populate the system
- */
-function generateInitialReadings() {
-  const initialCount = 20;
-  const now = new Date();
-  
-  logInfo(`📈 Generating ${initialCount} initial heart rate readings`);
-  
-  for (let i = initialCount - 1; i >= 0; i--) {
-    // Generate readings going back in time
-    const timeOffset = i * 15 * 60 * 1000; // 15 minutes apart
-    const timestamp = new Date(now.getTime() - timeOffset);
-    
-    const reading = generateNewReading();
-    // Override the timestamp to create historical data
-    const lastReading = require('./heartRateService').getHeartRateReadings(1)[0];
-    if (lastReading) {
-      lastReading.timestamp = timestamp.toISOString();
-      lastReading.hour = timestamp.toLocaleTimeString('es-ES', { 
-        hour: '2-digit', 
-        minute: '2-digit' 
-      });
-    }
-  }
-  
-  logInfo(`✅ Generated ${initialCount} initial readings`);
-}
-
-/**
- * Stop automatic data generation
- */
-function stopDataGeneration() {
-  if (dataGenerationInterval) {
-    clearInterval(dataGenerationInterval);
-    dataGenerationInterval = null;
-    logInfo('🛑 Stopped automatic data generation');
-  }
-}
-
-/**
- * Restart data generation with new interval
- * @param {number} intervalSeconds - New interval in seconds
- */
-function restartDataGeneration(intervalSeconds) {
-  stopDataGeneration();
-  process.env.DATA_UPDATE_INTERVAL = intervalSeconds.toString();
-  initializeDataGeneration();
-}
-
-/**
- * Get current data generation status
+ * Get current data service status
  * @returns {Object} Status information
  */
-function getDataGenerationStatus() {
+function getDataServiceStatus() {
   return {
-    isActive: dataGenerationInterval !== null,
-    interval: parseInt(process.env.DATA_UPDATE_INTERVAL) || 15,
-    nextUpdate: dataGenerationInterval ? 
-      new Date(Date.now() + (parseInt(process.env.DATA_UPDATE_INTERVAL) || 15) * 1000).toISOString() : 
-      null
+    mode: 'real-data',
+    description: 'API receives real heart rate data via POST endpoints',
+    autoGeneration: false,
+    lastUpdated: new Date().toISOString()
   };
 }
 
+/**
+ * Initialize data service (now just logs the current mode)
+ */
+function initializeDataService() {
+  logInfo('� Data service initialized in real-data mode');
+  logInfo('📥 Ready to receive heart rate data via POST /api/heart-rate/reading');
+  logInfo('🚫 Automatic data generation disabled');
+}
+
 module.exports = {
-  initializeDataGeneration,
-  stopDataGeneration,
-  restartDataGeneration,
-  getDataGenerationStatus
+  initializeDataService,
+  getDataServiceStatus
 };
