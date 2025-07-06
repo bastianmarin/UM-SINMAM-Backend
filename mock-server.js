@@ -2,6 +2,7 @@
  * Mock server for SINMAM API development
  * This file provides a simple mock server that generates random heart rate data
  * for testing purposes during development.
+ * 
  */
 
 const express = require('express');
@@ -97,7 +98,8 @@ app.get('/health', (req, res) => {
     status: 'OK',
     message: 'Mock SINMAM API is running',
     timestamp: new Date().toISOString(),
-    version: '1.0.0-mock'
+    version: '1.0.0-mock',
+    defaultEndpoint: DEFAULT_API_ENDPOINT
   });
 });
 
@@ -121,13 +123,15 @@ app.listen(PORT, () => {
   console.log('\n🚀 SINMAM Mock API Server');
   console.log(`📡 Server running on port ${PORT}`);
   console.log(`🌐 Base URL: http://localhost:${PORT}`);
+  console.log(`🔗 Default API Endpoint: ${DEFAULT_API_ENDPOINT}`);
   console.log('📋 Available endpoints:');
   console.log('  - GET /api/heart-rate/stats');
   console.log('  - GET /api/heart-rate/readings');
   console.log('  - GET /api/heart-rate/current');
   console.log('  - GET /health');
   console.log('\n✨ Mock data is being generated automatically');
-  console.log('🔄 This server generates random heart rate data for testing\n');
+  console.log('🔄 This server generates random heart rate data for testing');
+  console.log('📌 Configure your frontend to use: https://um-sinmam-api.iroak.cl/\n');
 });
 
 module.exports = app;
