@@ -123,7 +123,6 @@ app.listen(PORT, () => {
   console.log('\n🚀 SINMAM Mock API Server');
   console.log(`📡 Server running on port ${PORT}`);
   console.log(`🌐 Base URL: http://localhost:${PORT}`);
-  console.log(`🔗 Default API Endpoint: ${DEFAULT_API_ENDPOINT}`);
   console.log('📋 Available endpoints:');
   console.log('  - GET /api/heart-rate/stats');
   console.log('  - GET /api/heart-rate/readings');
