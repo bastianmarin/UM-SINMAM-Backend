@@ -31,12 +31,13 @@ El servidor estará disponible en `http://localhost:3001`
 ### Envío de Datos de Ritmo Cardíaco
 **POST** `/api/heart-rate/reading`
 
-Recibe una nueva lectura de ritmo cardíaco y la procesa automáticamente.
+Recibe una nueva lectura de ritmo cardíaco y oxigenación y la procesa automáticamente.
 
 **Cuerpo de la petición:**
 ```json
 {
-  "pulse": 85
+  "pulse": 85,
+  "spo2": 97
 }
 ```
 
@@ -49,6 +50,7 @@ Recibe una nueva lectura de ritmo cardíaco y la procesa automáticamente.
     "id": 1,
     "hour": "14:30",
     "pulse": 85,
+    "spo2": 97,
     "isRisky": false,
     "timestamp": "2025-07-06T14:30:00Z"
   }
@@ -58,7 +60,7 @@ Recibe una nueva lectura de ritmo cardíaco y la procesa automáticamente.
 ### Estadísticas de Ritmo Cardíaco
 **GET** `/api/heart-rate/stats`
 
-Retorna estadísticas de ritmo cardíaco incluyendo promedios para diferentes períodos de tiempo.
+Retorna estadísticas de ritmo cardíaco y oxigenación incluyendo promedios para diferentes períodos de tiempo.
 
 **Respuesta:**
 ```json
@@ -69,14 +71,18 @@ Retorna estadísticas de ritmo cardíaco incluyendo promedios para diferentes pe
   "current": 98,
   "lastUpdated": "14:30:25",
   "totalReadings": 25,
-  "hasData": true
+  "hasData": true,
+  "spo2": 97,
+  "avgSpo2_5min": 97,
+  "avgSpo2_15min": 96,
+  "avgSpo2_30min": 95
 }
 ```
 
 ### Historial de Lecturas
 **GET** `/api/heart-rate/readings`
 
-Retorna las lecturas recientes de ritmo cardíaco.
+Retorna las lecturas recientes de ritmo cardíaco y oxigenación.
 
 **Parámetros de consulta:**
 - `limit` (opcional): Número máximo de lecturas a retornar (1-20, default: 10)
@@ -88,6 +94,7 @@ Retorna las lecturas recientes de ritmo cardíaco.
     "id": 1,
     "hour": "14:30",
     "pulse": 110,
+    "spo2": 98,
     "isRisky": false,
     "timestamp": "2025-07-06T14:30:00Z"
   }
@@ -97,12 +104,13 @@ Retorna las lecturas recientes de ritmo cardíaco.
 ### Lectura Actual
 **GET** `/api/heart-rate/current`
 
-Retorna la lectura actual de ritmo cardíaco.
+Retorna la lectura actual de ritmo cardíaco y oxigenación.
 
 **Respuesta:**
 ```json
 {
   "current": 98,
+  "spo2": 97,
   "lastUpdated": "14:30:25",
   "timestamp": "2025-07-06T14:30:00Z",
   "hasData": true
@@ -180,7 +188,7 @@ El campo `isRisky` se establece en `true` cuando:
 ```bash
 curl -X POST http://localhost:3001/api/heart-rate/reading \
   -H "Content-Type: application/json" \
-  -d '{"pulse": 85}'
+  -d '{"pulse": 85, "spo2": 97}'
 ```
 
 ## 📊 Características
@@ -200,7 +208,7 @@ curl -X POST http://localhost:3001/api/heart-rate/reading \
 ### Seguridad
 
 - Validación de entrada
-- Límites de valores (30-250 BPM)
+- Límites de valores (30-250 BPM, 50-100 SpO2)
 - Manejo de errores estructurado
 - CORS habilitado
 
@@ -226,14 +234,14 @@ VITE_API_BASE_URL=https://um-sinmam-api.iroak.cl
 // Ejemplo de envío de datos
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'https://um-sinmam-api.iroak.cl';
 
-const sendHeartRateReading = async (pulse) => {
+const sendHeartRateReading = async (pulse, spo2) => {
   try {
     const response = await fetch(`${API_BASE_URL}/api/heart-rate/reading`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ pulse })
+      body: JSON.stringify({ pulse, spo2 })
     });
     
     if (!response.ok) {
@@ -250,7 +258,7 @@ const sendHeartRateReading = async (pulse) => {
 };
 
 // Enviar una lectura
-sendHeartRateReading(85);
+sendHeartRateReading(85, 97);
 ```
 
 ### Obtener Estadísticas
@@ -297,10 +305,10 @@ Los logs incluyen:
 
 ### Ejemplo de logs:
 ```
-📥 New reading: 85 BPM (NORMAL)
-📊 Stats requested: Current 85 BPM (1 readings)
+📥 New reading: 85 BPM, SpO2: 97 (NORMAL)
+📊 Stats requested: Current 85 BPM, SpO2: 97 (1 readings)
 📋 Readings requested: 1 entries
-💓 Current heart rate: 85 BPM
+💓 Current heart rate: 85 BPM, SpO2: 97
 ```
 
 ## 🤝 Contribución
@@ -325,9 +333,7 @@ Para soporte técnico:
 
 ## 🔄 Actualizaciones
 
-### Versión 1.0.0
-- ✅ API completa de ritmo cardíaco
-- ✅ Recepción de datos vía POST
-- ✅ Procesamiento en tiempo real
-- ✅ Almacenamiento en memoria
-- ✅ Documentación completa
+### Versión 1.1.0
+- ✅ Soporte para SpO2 (oxigenación)
+- ✅ Estadísticas de SpO2
+- ✅ Documentación actualizada

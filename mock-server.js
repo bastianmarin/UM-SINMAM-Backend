@@ -9,7 +9,7 @@ const cors = require('cors');
 const app = express();
 
 // Configuration
-const DEFAULT_API_ENDPOINT = 'http://um-sinmam-api.iroak.cl/';
+const DEFAULT_API_ENDPOINT = 'https://um-sinmam-api.iroak.cl/';
 
 app.use(cors());
 app.use(express.json());
@@ -37,6 +37,18 @@ function calculateAverage(minutes) {
   return Math.round(sum / relevantReadings.length);
 }
 
+function calculateAverageSpo2(minutes) {
+  const cutoffTime = new Date(Date.now() - minutes * 60 * 1000);
+  const relevantReadings = heartRateReadings.filter(reading => 
+    new Date(reading.timestamp) >= cutoffTime && typeof reading.spo2 === 'number'
+  );
+  if (relevantReadings.length === 0) {
+    return null;
+  }
+  const sum = relevantReadings.reduce((acc, reading) => acc + reading.spo2, 0);
+  return Math.round(sum / relevantReadings.length);
+}
+
 function getCurrentHeartRate() {
   if (heartRateReadings.length === 0) {
     return null;
@@ -44,7 +56,7 @@ function getCurrentHeartRate() {
   return heartRateReadings[heartRateReadings.length - 1].pulse;
 }
 
-function addHeartRateReading(pulse) {
+function addHeartRateReading(pulse, spo2) {
   const timestamp = new Date();
   const reading = {
     id: currentId++,
@@ -53,6 +65,7 @@ function addHeartRateReading(pulse) {
       minute: '2-digit' 
     }),
     pulse: pulse,
+    spo2: spo2,
     isRisky: isRiskyReading(pulse),
     timestamp: timestamp.toISOString()
   };
@@ -64,33 +77,35 @@ function addHeartRateReading(pulse) {
     heartRateReadings = heartRateReadings.slice(-50);
   }
   
-  console.log(`📥 New reading: ${pulse} BPM (${reading.isRisky ? 'RISKY' : 'NORMAL'})`);
+  console.log(`📥 New reading: ${pulse} BPM, SpO2: ${spo2} (${reading.isRisky ? 'RISKY' : 'NORMAL'})`);
   return reading;
 }
 
 // POST /api/heart-rate/reading
 app.post('/api/heart-rate/reading', (req, res) => {
   try {
-    const { pulse } = req.body;
-    
-    // Validate input
+    const { pulse, spo2 } = req.body;
+    // Validar pulse
     if (!pulse || typeof pulse !== 'number' || pulse < 30 || pulse > 250) {
       return res.status(400).json({
         error: 'Invalid heart rate data',
         message: 'Pulse must be a number between 30 and 250'
       });
     }
-    
-    // Add the reading
-    const reading = addHeartRateReading(pulse);
-    
-    // Return success response
+    // Validar spo2
+    if (typeof spo2 !== 'number' || spo2 < 50 || spo2 > 100) {
+      return res.status(400).json({
+        error: 'Invalid SpO2 data',
+        message: 'SpO2 must be a number between 50 and 100'
+      });
+    }
+    // Agregar la lectura
+    const reading = addHeartRateReading(pulse, spo2);
     res.status(201).json({
       success: true,
       message: 'Heart rate reading processed successfully',
       reading: reading
     });
-    
   } catch (error) {
     console.error('Error processing heart rate reading:', error);
     res.status(500).json({
@@ -114,24 +129,24 @@ app.get('/api/heart-rate/stats', (req, res) => {
         second: '2-digit' 
       }) : null,
     totalReadings: heartRateReadings.length,
-    hasData: heartRateReadings.length > 0
+    hasData: heartRateReadings.length > 0,
+    spo2: heartRateReadings.length > 0 ? heartRateReadings[heartRateReadings.length - 1].spo2 : null,
+    avgSpo2_5min: calculateAverageSpo2(5),
+    avgSpo2_15min: calculateAverageSpo2(15),
+    avgSpo2_30min: calculateAverageSpo2(30)
   };
-  
-  console.log(`📊 Stats requested: Current ${stats.current} BPM (${stats.totalReadings} readings)`);
+  console.log(`📊 Stats requested: Current ${stats.current} BPM, SpO2: ${stats.spo2} (${stats.totalReadings} readings)`);
   res.json(stats);
 });
 
 // GET /api/heart-rate/readings
 app.get('/api/heart-rate/readings', (req, res) => {
   const limit = parseInt(req.query.limit) || 10;
-  const maxReadings = Math.min(limit, 20); // Limit to 20 max
-  
-  // Return actual readings if available
+  const maxReadings = Math.min(limit, 20);
   if (heartRateReadings.length > 0) {
     const readings = heartRateReadings
       .slice(-maxReadings)
-      .reverse(); // Most recent first
-    
+      .reverse();
     console.log(`📋 Readings requested: ${readings.length} entries`);
     res.json(readings);
   } else {
@@ -145,6 +160,7 @@ app.get('/api/heart-rate/current', (req, res) => {
   const current = getCurrentHeartRate();
   const response = {
     current: current,
+    spo2: heartRateReadings.length > 0 ? heartRateReadings[heartRateReadings.length - 1].spo2 : null,
     lastUpdated: heartRateReadings.length > 0 ? 
       new Date(heartRateReadings[heartRateReadings.length - 1].timestamp).toLocaleTimeString('es-ES', { 
         hour: '2-digit', 
@@ -154,8 +170,7 @@ app.get('/api/heart-rate/current', (req, res) => {
     timestamp: new Date().toISOString(),
     hasData: heartRateReadings.length > 0
   };
-  
-  console.log(`💓 Current heart rate: ${current} BPM`);
+  console.log(`💓 Current heart rate: ${current} BPM, SpO2: ${response.spo2}`);
   res.json(response);
 });
 

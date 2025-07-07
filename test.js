@@ -4,8 +4,8 @@
 
 const http = require('http');
 
-function testPost(pulse) {
-  const postData = JSON.stringify({ pulse });
+function testPost(pulse, spo2) {
+  const postData = JSON.stringify({ pulse, spo2 });
   
   const options = {
     hostname: 'localhost',
@@ -37,7 +37,7 @@ function testPost(pulse) {
 
 // Test different values
 console.log('Testing POST endpoint...');
-testPost(75);  // Normal
-setTimeout(() => testPost(110), 1000);  // High
-setTimeout(() => testPost(55), 2000);   // Low
-setTimeout(() => testPost(85), 3000);   // Normal
+testPost(75, 98);  // Normal
+setTimeout(() => testPost(110, 97), 1000);  // High
+setTimeout(() => testPost(55, 96), 2000);   // Low
+setTimeout(() => testPost(85, 99), 3000);   // Normal
